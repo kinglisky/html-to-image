@@ -220,3 +220,7 @@ export async function nodeToDataURL(
 
   return svgToDataURL(svg)
 }
+
+export function getNodeConstructorName(node: Element): string {
+  return node.constructor.name
+}

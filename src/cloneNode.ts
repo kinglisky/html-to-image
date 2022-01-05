@@ -1,7 +1,13 @@
 import { Options } from './options'
 import { getBlobFromURL } from './getBlobFromURL'
 import { clonePseudoElements } from './clonePseudoElements'
-import { createImage, getMimeType, makeDataUrl, toArray } from './util'
+import {
+  createImage,
+  getMimeType,
+  makeDataUrl,
+  toArray,
+  getNodeConstructorName,
+} from './util'
 
 async function cloneCanvasElement(node: HTMLCanvasElement) {
   const dataURL = node.toDataURL()
@@ -25,12 +31,15 @@ async function cloneSingleNode<T extends HTMLElement>(
   node: T,
   options: Options,
 ): Promise<HTMLElement> {
-  if (node instanceof HTMLCanvasElement) {
-    return cloneCanvasElement(node)
+  if (getNodeConstructorName(node) === 'HTMLCanvasElement') {
+    return cloneCanvasElement(node as unknown as HTMLCanvasElement)
   }
 
-  if (node instanceof HTMLVideoElement && node.poster) {
-    return cloneVideoElement(node, options)
+  if (
+    getNodeConstructorName(node) === 'HTMLVideoElement' &&
+    (node as unknown as HTMLVideoElement).poster
+  ) {
+    return cloneVideoElement(node as unknown as HTMLVideoElement, options)
   }
 
   return Promise.resolve(node.cloneNode(false) as T)
@@ -49,7 +58,10 @@ async function cloneChildren<T extends HTMLElement>(
       ? toArray<T>(nativeNode.assignedNodes())
       : toArray<T>((nativeNode.shadowRoot ?? nativeNode).childNodes)
 
-  if (children.length === 0 || nativeNode instanceof HTMLVideoElement) {
+  if (
+    children.length === 0 ||
+    getNodeConstructorName(nativeNode) === 'HTMLVideoElement'
+  ) {
     return Promise.resolve(clonedNode)
   }
 
@@ -92,12 +104,15 @@ function cloneCSSStyle<T extends HTMLElement>(nativeNode: T, clonedNode: T) {
 }
 
 function cloneInputValue<T extends HTMLElement>(nativeNode: T, clonedNode: T) {
-  if (nativeNode instanceof HTMLTextAreaElement) {
-    clonedNode.innerHTML = nativeNode.value
+  if (getNodeConstructorName(nativeNode) === 'HTMLTextAreaElement') {
+    clonedNode.innerHTML = (nativeNode as unknown as HTMLTextAreaElement).value
   }
 
-  if (nativeNode instanceof HTMLInputElement) {
-    clonedNode.setAttribute('value', nativeNode.value)
+  if (getNodeConstructorName(nativeNode) === 'HTMLInputElement') {
+    clonedNode.setAttribute(
+      'value',
+      (nativeNode as unknown as HTMLInputElement).value,
+    )
   }
 }
 
@@ -105,7 +120,7 @@ async function decorate<T extends HTMLElement>(
   nativeNode: T,
   clonedNode: T,
 ): Promise<T> {
-  if (!(clonedNode instanceof Element)) {
+  if (!(getNodeConstructorName(clonedNode) === 'Element')) {
     return Promise.resolve(clonedNode)
   }
 

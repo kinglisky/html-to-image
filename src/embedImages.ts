@@ -1,7 +1,13 @@
 import { Options } from './options'
 import { getBlobFromURL } from './getBlobFromURL'
 import { embedResources } from './embedResources'
-import { getMimeType, isDataUrl, makeDataUrl, toArray } from './util'
+import {
+  getMimeType,
+  isDataUrl,
+  makeDataUrl,
+  toArray,
+  getNodeConstructorName,
+} from './util'
 
 async function embedBackground<T extends HTMLElement>(
   clonedNode: T,
@@ -30,10 +36,13 @@ async function embedImageNode<T extends HTMLElement | SVGImageElement>(
   options: Options,
 ): Promise<T> {
   if (
-    !(clonedNode instanceof HTMLImageElement && !isDataUrl(clonedNode.src)) &&
     !(
-      clonedNode instanceof SVGImageElement &&
-      !isDataUrl(clonedNode.href.baseVal)
+      getNodeConstructorName(clonedNode) === 'HTMLImageElement' &&
+      !isDataUrl((clonedNode as unknown as HTMLImageElement).src)
+    ) &&
+    !(
+      getNodeConstructorName(clonedNode) === 'SVGImageElement' &&
+      !isDataUrl((clonedNode as unknown as SVGImageElement).href.baseVal)
     )
   ) {
     return Promise.resolve(clonedNode)
@@ -42,7 +51,7 @@ async function embedImageNode<T extends HTMLElement | SVGImageElement>(
   const src =
     clonedNode instanceof HTMLImageElement
       ? clonedNode.src
-      : clonedNode.href.baseVal
+      : (clonedNode as SVGImageElement).href.baseVal
 
   return Promise.resolve(src)
     .then((url) => getBlobFromURL(url, options))
@@ -54,11 +63,11 @@ async function embedImageNode<T extends HTMLElement | SVGImageElement>(
         new Promise((resolve, reject) => {
           clonedNode.onload = resolve
           clonedNode.onerror = reject
-          if (clonedNode instanceof HTMLImageElement) {
-            clonedNode.srcset = ''
-            clonedNode.src = dataURL
+          if (getNodeConstructorName(clonedNode) === 'HTMLImageElement') {
+            ;(clonedNode as HTMLImageElement).srcset = ''
+            ;(clonedNode as HTMLImageElement).src = dataURL
           } else {
-            clonedNode.href.baseVal = dataURL
+            ;(clonedNode as SVGImageElement).href.baseVal = dataURL
           }
         }),
     )
@@ -82,7 +91,7 @@ export async function embedImages<T extends HTMLElement>(
   clonedNode: T,
   options: Options,
 ): Promise<T> {
-  if (!(clonedNode instanceof Element)) {
+  if (!(getNodeConstructorName(clonedNode) === 'Element')) {
     return Promise.resolve(clonedNode)
   }
 
